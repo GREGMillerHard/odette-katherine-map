@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ODETTE &amp; KATHERINE · The Journeys</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --parchment:#ede3cd;
+    --ink:#211d17;
+    --km:#3c6e5a;
+    --oh:#7a2530;
+    --gold:#a67c3d;
+    --grey:#8a8577;
+    --panel:#ffffff;
+    --border:#c9b78f;
+    --hover:#e2d4b3;
+    --goldbg:#ecdcb8;
+    --mapbg:#ddd1af;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'EB Garamond',Georgia,serif;
+    color:var(--ink);
+    background:var(--parchment);
+    display:flex;
+    overflow:hidden;
+  }
+  #panel{
+    width:340px;min-width:340px;height:100vh;overflow-y:auto;
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    padding:26px 22px 40px;
+  }
+  #panel h1{
+    display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:baseline;column-gap:6px;
+    font-family:'Cormorant Garamond',Georgia,serif;
+    font-size:18px;font-weight:700;letter-spacing:.01em;line-height:1.15;
+    white-space:nowrap;
+  }
+  #panel h1 .tname-left{text-align:right}
+  #panel h1 .tname-right{text-align:left}
+  #panel h1 .amp{color:var(--gold);font-weight:500;font-style:italic;font-size:.65em}
+  #panel .sub{
+    font-family:'Cormorant Garamond',Georgia,serif;
+    font-style:italic;font-size:19px;color:var(--gold);margin:8px 0 22px;text-align:center;
+  }
+  .legend{font-size:14px;margin-bottom:18px;line-height:1.7}
+  .swatch{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:7px}
+  .swatch.km{background:var(--km)}
+  .swatch.oh{background:var(--oh)}
+  .swatch.dash{background:repeating-linear-gradient(90deg,var(--oh) 0 5px,transparent 5px 9px)}
+  .swatch.gold{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+  .toggles{display:flex;gap:8px;margin-bottom:20px}
+  .toggles button{
+    flex:1;font-family:'Courier Prime',monospace;font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:7px 4px;border:1px solid var(--grey);background:transparent;
+    color:var(--ink);cursor:pointer;
+  }
+  .toggles button.off{opacity:.35}
+  .toggles button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  h2.route{
+    font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    margin:22px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);
+  }
+  h2.route.km{color:var(--km);font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:17px;letter-spacing:.04em;text-transform:none}
+  h2.route.oh{color:var(--oh);font-family:'Courier Prime',monospace;font-weight:700}
+  ol.tl{list-style:none}
+  ol.tl li{
+    font-size:14px;line-height:1.45;padding:6px 8px 6px 12px;margin:2px 0;
+    border-left:2px solid transparent;cursor:pointer;
+  }
+  ol.tl li:hover,ol.tl li:focus-visible{background:var(--hover);outline:none}
+  ol.tl.km li{border-left-color:var(--km)}
+  ol.tl.oh li{border-left-color:var(--oh)}
+  ol.tl li b{font-weight:600;display:inline-block;transition:transform .15s ease;transform-origin:left center}
+  ol.tl li:hover b,ol.tl li:focus-visible b{transform:scale(1.12)}
+  ol.tl li .d{color:var(--grey);font-size:12.5px;display:block}
+  ol.tl.km li b{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.05em}
+  ol.tl.km li .d{font-style:italic}
+  ol.tl.oh li .d{font-family:'Courier Prime',monospace;font-size:11.5px;letter-spacing:.02em}
+  ol.tl li.gold{border-left-color:var(--gold);background:var(--goldbg)}
+  ol.tl li.gold .d{font-family:'Courier Prime',monospace;font-size:11.5px}
+  .note{
+    font-size:12px;color:var(--grey);margin-top:26px;line-height:1.55;
+    border-top:1px solid var(--border);padding-top:12px;
+  }
+  #map{flex:1;height:100vh;background:var(--mapbg)}
+  .leaflet-popup-content-wrapper{
+    background:#ffffff;color:var(--ink);
+    font-family:'EB Garamond',Georgia,serif;border-radius:2px;
+    box-shadow:0 2px 10px rgba(43,38,32,.25);
+  }
+  .leaflet-popup-content{font-size:17px;line-height:1.55;margin:14px 18px}
+  #lightbox{display:none;position:fixed;inset:0;background:rgba(20,17,12,.90);z-index:9999;cursor:zoom-out;align-items:center;justify-content:center}
+  #lightbox.active{display:flex}
+  #lightbox img{max-width:95vw;max-height:95vh;box-shadow:0 8px 40px rgba(0,0,0,.6);border-radius:2px}
+  .lightbox-arrow{
+    position:fixed;top:50%;transform:translateY(-50%);
+    font-size:48px;line-height:1;color:#fff;cursor:pointer;
+    padding:10px 18px;user-select:none;z-index:10000;
+    display:none;align-items:center;justify-content:center;
+    text-shadow:0 2px 8px rgba(0,0,0,.6);
+  }
+  .lightbox-arrow:hover{color:var(--border)}
+  .lightbox-arrow-left{left:18px}
+  .lightbox-arrow-right{right:18px}
+  @media (max-width:760px){
+    .lightbox-arrow{font-size:34px;padding:8px 12px}
+  }
+  .leaflet-tooltip.place-label{
+    font-family:'Cormorant Garamond',Georgia,serif;font-size:23px;font-weight:600;
+    color:var(--ink);background:var(--parchment);border:1px solid var(--border);
+    padding:4px 12px;border-radius:2px;box-shadow:0 2px 8px rgba(0,0,0,.25);
+    white-space:nowrap;
+  }
+  .leaflet-tooltip.place-label::before{border-top-color:var(--border)}
+  .carousel{position:relative;margin-bottom:8px}
+  .carousel-img{width:100%;max-width:570px;display:block;margin:0 auto;border-radius:2px;cursor:zoom-in}
+  .carousel-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px}
+  .carousel-arrow{cursor:pointer;font-size:20px;line-height:1;color:var(--oh);user-select:none;padding:0 6px}
+  .carousel-arrow:hover{color:#4a1620}
+  .carousel-dots{display:flex;gap:5px}
+  .carousel-dots .dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer}
+  .carousel-dots .dot.active{background:var(--oh)}
+  .leaflet-popup-content h3{font-family:'Cormorant Garamond',Georgia,serif;font-size:21px;font-weight:600;margin-bottom:3px;display:inline-block;transition:transform .15s ease;transform-origin:left center;cursor:default}
+  .leaflet-popup-content h3:hover{transform:scale(1.08)}
+  .leaflet-popup-content .pd{color:var(--grey);font-size:15px;margin-bottom:7px}
+  .entry.km .pd{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:15.5px}
+  .entry.oh .pd{font-family:'Courier Prime',monospace;font-size:12.5px;letter-spacing:.02em}
+  .entry.gold .pd{font-family:'Courier Prime',monospace;font-size:12.5px;letter-spacing:.02em;color:var(--gold)}
+  .leaflet-popup-tip{background:#ffffff}
+  .pin{border-radius:50%;border:2px solid var(--parchment);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+  #guideBox{
+    position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:1150;
+    background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    box-shadow:0 6px 26px rgba(0,0,0,.35);padding:24px 52px 24px 28px;max-width:520px;
+    font-family:'EB Garamond',Georgia,serif;font-size:22px;line-height:1.5;color:var(--ink);
+  }
+  #guideBox p{margin:0}
+  #guideClose{
+    position:absolute;top:8px;right:10px;background:none;border:none;
+    font-size:26px;line-height:1;color:var(--grey);cursor:pointer;
+    font-family:inherit;padding:4px 10px;
+  }
+  #guideClose:hover{color:var(--ink)}
+  #outlineBox{
+    position:absolute;top:28px;left:50%;transform:translateX(-50%);z-index:1200;
+    width:min(94%,1400px);max-height:75vh;aspect-ratio:16/7;
+    background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    box-shadow:0 6px 26px rgba(0,0,0,.3);padding:26px 48px 26px 28px;
+    overflow-y:auto;overflow-x:hidden;
+    font-family:'EB Garamond',Georgia,serif;font-size:22px;line-height:1.5;color:var(--ink);
+  }
+  #outlineBox .outline-hero{
+    display:block;margin:0 auto .5em;height:16em;width:auto;
+    border-radius:.35em;cursor:zoom-in;object-fit:cover;
+  }
+  #outlineBox h4{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.5em;font-weight:700;letter-spacing:.04em;margin:0 0 .15em;text-align:center}
+  #outlineBox .sub{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:1.5em;color:var(--gold);text-align:center;margin:0 0 .8em}
+  #outlineBox p{margin:0 0 .15em}
+  #outlineBox p:last-child{margin-bottom:0}
+  #outlineClose{
+    position:absolute;top:8px;right:10px;background:none;border:none;
+    font-size:22px;line-height:1;color:var(--grey);cursor:pointer;
+    font-family:inherit;padding:4px 10px;
+  }
+  #outlineClose:hover{color:var(--ink)}
+  @media (max-width:760px){
+    #guideBox{font-size:17px;padding:18px 40px 18px 20px;max-width:88vw}
+    #outlineBox{width:92%;padding:18px 38px 18px 20px}
+  }
+  @media (max-width:760px){
+    body{flex-direction:column}
+    #panel{width:100%;min-width:0;height:44vh;border-right:none;border-bottom:1px solid var(--border)}
+    #map{height:56vh}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .leaflet-fade-anim .leaflet-tile,.leaflet-zoom-anim .leaflet-zoom-animated{transition:none!important}
+  }
+</style>
+</head>
+<body>
+<aside id="panel">
+  <img src="https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/MASTER_O%26K.jpg" alt="Odette and Katherine" style="width:100%;display:block;margin:0 0 26px;border-radius:12px;cursor:zoom-in" onclick="showLightbox(this.src)">
+  <h1><span class="tname tname-left">ODETTE</span><span class="amp">&amp;</span><span class="tname tname-right">KATHERINE</span></h1>
+  <div class="sub">The journeys</div>
+  <div class="legend">
+    <span class="swatch km"></span>Katherine Mansfield, 1908&ndash;1923<br>
+    <span class="swatch oh"></span>Odette Hallowes, 1912&ndash;1995
+  </div>
+  <div class="toggles">
+    <button id="tOH" aria-pressed="true">Odette</button>
+    <button id="tKM" aria-pressed="true">Katherine</button>
+  </div>
+  <h2 class="route km">Katherine Mansfield</h2>
+  <ol class="tl km" id="listKM"></ol>
+  <h2 class="route oh">Odette Hallowes</h2>
+  <ol class="tl oh" id="listOH"></ol>
+  <div class="note">
+    Katherine was born in Wellington, New Zealand, 14 October 1888. She sailed
+    for London in 1908 and never returned. The map begins where her European
+    life begins.<br><br>
+    Marker positions are town-level. Sites within towns (Villa Augusta,
+    Higher Tregerthen, Le Prieur&eacute;, Burvale Cemetery) sit at the locality
+    centre. The Gourock to Gibraltar line shows a standard wartime convoy
+    course out of the Clyde. Her ship&rsquo;s exact track is not documented in
+    the project sources. Every event shown is documented in the treatment
+    and its sources.
+  </div>
+</aside>
+<div id="map"></div>
+<div id="lightbox" onclick="hideLightbox()">
+  <span id="lightboxPrev" class="lightbox-arrow lightbox-arrow-left" onclick="lightboxMove(event,-1)">&#8249;</span>
+  <img id="lightbox-img" src="" alt="">
+  <span id="lightboxNext" class="lightbox-arrow lightbox-arrow-right" onclick="lightboxMove(event,1)">&#8250;</span>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+let lbImages = [];
+let lbIndex = 0;
+function showLightbox(images, index){
+  if (typeof images === 'string'){ images = [images]; index = 0; }
+  lbImages = images || [];
+  lbIndex = index || 0;
+  document.getElementById('lightbox-img').src = lbImages[lbIndex];
+  const multi = lbImages.length > 1;
+  document.getElementById('lightboxPrev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('lightboxNext').style.display = multi ? 'flex' : 'none';
+  document.getElementById('lightbox').classList.add('active');
+}
+function hideLightbox(){
+  document.getElementById('lightbox').classList.remove('active');
+}
+function lightboxMove(e, dir){
+  if (e && e.stopPropagation) e.stopPropagation();
+  if (lbImages.length < 2) return;
+  lbIndex = (lbIndex + dir + lbImages.length) % lbImages.length;
+  document.getElementById('lightbox-img').src = lbImages[lbIndex];
+}
+document.addEventListener('keydown', function(e){
+  if (!document.getElementById('lightbox').classList.contains('active')) return;
+  if (e.key === 'ArrowLeft') lightboxMove(e, -1);
+  else if (e.key === 'ArrowRight') lightboxMove(e, 1);
+  else if (e.key === 'Escape') hideLightbox();
+});
+const map = L.map('map',{zoomControl:true,attributionControl:true})
+  .setView([48.6,4.0],5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains:'abcd',maxZoom:12,minZoom:4
+}).addTo(map);
+// Outline popup, shown on load at the top, closeable
+(function(){
+  const outlineBox = document.createElement('div');
+  outlineBox.id = 'outlineBox';
+  outlineBox.innerHTML = '<button id="outlineClose" aria-label="Close outline">&times;</button>' +
+    '<img class="outline-hero" src="https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/MASTER_O%26K.jpg" alt="Odette and Katherine" onclick=\'event.stopPropagation();showLightbox(["https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/MASTER_O%26K.jpg"],0)\'>' +
+    '<h4>ODETTE and KATHERINE</h4>' +
+    '<div class="sub">The Journeys.</div>' +
+    '<p style="text-align:center">Two timelines and two world wars: Katherine 1908 to 1928, Odette 1942 to 1946.</p>'
+  document.getElementById('map').appendChild(outlineBox);
+  // Shrink font until all text fits inside the fixed 16:9 box with no scroll
+  function fitOutlineText(){
+    let fontSize = 26;
+    outlineBox.style.fontSize = fontSize + 'px';
+    while (outlineBox.scrollHeight > outlineBox.clientHeight && fontSize > 15){
+      fontSize -= 0.5;
+      outlineBox.style.fontSize = fontSize + 'px';
+    }
+  }
+  fitOutlineText();
+  window.addEventListener('resize', fitOutlineText);
+  outlineBox.addEventListener('click', function(){ outlineBox.remove(); });
+})();
+// Guide popup, shown on load below the outline box, closeable
+(function(){
+  const guideBox = document.createElement('div');
+  guideBox.id = 'guideBox';
+  guideBox.innerHTML = '<button id="guideClose" aria-label="Close guide">&times;</button>' +
+    '<p>Zoom in and click on the different map points, or click on the places in the timelines, to go to that time and place.</p>' +
+    '<p>Click anywhere on these popup screens to close.</p>';
+  document.getElementById('map').appendChild(guideBox);
+  function positionGuide(){ /* positioned via CSS bottom:28px */ }
+  positionGuide();
+  window.addEventListener('resize', positionGuide);
+  guideBox.addEventListener('click', function(){ guideBox.remove(); });
+})();
+// Both intro boxes get out of the way the moment the viewer picks a place,
+// whether from a map pin or from the timelines in the left panel.
+// Cap a requested popup width to what the map pane can actually show, so a wide
+// entry never runs off the side on a smaller screen. 340px is the left panel.
+function fitW(w){
+  const avail = (window.innerWidth || 1400) - 340 - 60;
+  return Math.max(400, Math.min(w, avail));
+}
+function dismissIntro(){
+  const o = document.getElementById('outlineBox');
+  if (o) o.remove();
+  const g = document.getElementById('guideBox');
+  if (g) g.remove();
+}
+// ── Data: verified canon only ────────────────────────────────────────────────
+const KM = [
+ {n:'London, England',d:'1908',e:'She sails from Wellington on 6 July 1908 aboard the SS Papanui, arriving in London that August, aged nineteen. Her father Harold Beauchamp settles an allowance of £100 a year on her, and she takes a room at Beauchamp Lodge, a boarding house near Regent’s Canal in Paddington. Free of her family for the first time, she falls quickly into a bohemian life. She never returns to New Zealand.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/KM1908.webp'],c:[51.5074,-0.1278]},
+ {n:'Bad Wörishofen, Bavaria, Germany',d:'1909',e:'Taken to the Bavarian spa town by her mother in 1909, aged twenty, after a family scandal and the collapse of a one-night marriage. The father of the child she was carrying was <b>Garnet Trowell</b>, a young musician. The pregnancy, and the marriage to George Bowden she abandoned the same evening, were the scandal. Annie Beauchamp installed her at the Hotel Kreuzer and sailed for New Zealand on <b>10 June</b>, within the week. Katherine signed the register <b>Käthe Beauchamp-Bowden, Schriftstellerin</b>, woman writer. She had published nothing.<br><b>The stated reason for the cure was not the pregnancy.</b> Neither Bowden nor her mother knew she was pregnant; Bowden only learned of it from a biography published in 1933. They had married at Paddington Register Office on <b>2 March 1909</b>, Ida Baker the sole witness. By Bowden’s account she turned cold at the hotel that night, left with him the next morning to fetch her things, and never came back. It took him about a week to get an address. When Annie Beauchamp reached London on 27 May she summoned him to the offices of the Bank of New Zealand. He told her he believed Katherine was a lesbian, and that this explained the refusal to consummate the marriage. A water cure, a German speciality, was held to treat it. <b>That is why she was taken to Bavaria.</b> Her mother left her there, sailed home, and cut her out of her will on arrival. (Gerri Kimber, introduction to the Bowden letters, Collected Letters Vol. 1.)<br><b>The miscarriage</b> came in late June or early July at the Pension Müller, possibly from lifting her trunk down from the wardrobe. She never explained the circumstances to Ida Baker, then or later.<br>What she took from the place was a voice. Watching the guests at the water cure, their table manners and hypochondria and posturing, gave her the satirical eye behind <i>In a German Pension</i> (1911), her first collection and the book that made her reputation.<br><b>Floryan Sobieniowski.</b> Afterwards she moved to rooms above the post office and fell in with a group of Polish intellectuals. Sobieniowski was twenty-eight, good-looking, smooth-tongued, a translator by ambition, living on his wits. Tomalin treats the affair as fact: he fell in love with her, and she responded. The plan was Munich, then Russia or Paris, living by translating and writing, a divorce, then marriage. <b>His letters survive.</b> In January 1910, from a hotel in Paris, he is flat-hunting for them both, addresses her as his wife, and cannot understand why she has not written in a fortnight. She never replied. She did not end it so much as stop answering.<br>Tomalin’s verdict is that he was offering her poisoned gifts. The first was <b>Chekhov</b>, then barely known in the west. What came of it was <b>‘The Child-Who-Was-Tired’</b>, in substance Chekhov’s ‘Spat’ khochetsia’, published in England in February 1910 and collected in 1911, both times unacknowledged.<br>The second arrived eleven years later. In <b>1920</b>, with <i>Bliss</i> announced, Sobieniowski told Murry it might be worth Katherine’s while to pay <b>£40</b> for letters he held. That was her entire advance on the book. She paid at once, Ida finding the money. <b>What was in them is not known.</b> Tomalin doubts a dead love affair would have frightened her that badly, and suspects they touched the Chekhov borrowing.<br><b>A caution about all of the above.</b> The years either side of this are the most obscure of her life, because she erased them. Kimber records that Katherine <b>systematically destroyed her own personal papers from 1910 to 1913</b>, the years she was, in Kimber’s phrase, experimenting with “life”. Her own name for what she burned was her <b>“huge complaining diaries”</b>. What survives from those four years is some letters and her creative writing, nothing else. Biographers therefore reconstruct. Tomalin concedes as much, saying she cannot prove every detail and can only show that it fits the known facts.<br>What does survive tends to have been beyond Katherine’s reach. A file kept by <b>George Bowden</b> and deposited at the Alexander Turnbull Library in 1986 holds three letters from Sobieniowski, two from Katherine to an unnamed recipient thought to be Ida Baker, and one from her friend Vera French. A complete story from the late spring of 1909, ‘A Little Episode’, has since come to light. And in <b>May 2015</b>, working through holdings at the Newberry Library in Chicago, Kimber opened a folder that had lain unexamined since 1999 and found <b>thirty-five typewritten poems dating from 1909–10</b>, only nine of them previously published, together with two handwritten letters and Katherine’s calling card. Poems from precisely the period she had tried to erase. (Gerri Kimber, ‘That Pole outside our door’, and <i>The Diaries of Katherine Mansfield</i>, Edinburgh Edition Vol. 4.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/BAD.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/SOBIENIOWSKI.png'],w:1200,c:[48.0060,10.5960]},
+ {n:'Rottingdean, Sussex, England',d:'1910',e:'<b>Convalescence, and a bill nobody wanted to explain.</b><br>She comes back from Bavaria in December 1909. Ida Baker sends the fare, meets her, and puts her in the newly opened Strand Palace Hotel. She has stories in her bag, £100 a year from her father paid out through Mr Kay in the City, and Ida.<br>Then she is seriously ill and has an operation. Ida rents rooms over a shop on the Sussex coast between Brighton and Newhaven and takes her there to recover. Katherine calls the pain in her joints rheumatism. Tomalin attributes it to the infection she carried back from Germany, and it will recur for the rest of her life. The doctors’ bills mount until Mr Kay travels down in person to settle them. The advice she is given is to live quietly, eat well, avoid alcohol, and keep warm.',w:800,c:[50.8047,-0.0619]},
+ {n:'Cheyne Walk, Chelsea, London',d:'early 1910',e:'<b>The New Age, and a silence she should have broken.</b><br>Bowden, the husband she had walked out on within a day, does her the last kindness of taking her to the offices of the <i>New Age</i> in a court off Chancery Lane: two small smoky rooms up a lot of stone stairs. <b>A. R. Orage</b> reads her work and says he will publish. The first story he picks out is <b>‘The Child-Who-Was-Tired’</b>, the one drawn from Chekhov. She says nothing. It is her first published story in England and it appears without acknowledgement.<br>Orage is thirty-seven, patched boots, a red birthmark on one side of his face, and so short of money that his private name for the paper is “No Wage”. He lives with the writer <b>Beatrice Hastings</b>. The two of them find Katherine a two-room flat in Cheyne Walk belonging to a painter wintering in Morocco, with a view over the river and a human skull used as a candle holder. She takes the front room so she can watch the trees in the lamplight. Ida moves her in.',w:800,c:[51.4835,-0.1707]},
+ {n:'Clovelly Mansions, Gray’s Inn Road, London',d:'April 1910 – 1912',e:'<b>The Writing Room and the Music Room.</b><br>The painter comes home in April and she moves nearer the paper, to a fourth-floor flat at No. 69, a red-brick block on Gray’s Inn Road. Two rooms at the front, which she names the Writing Room and the Music Room, with views east over the city spires and west to Bloomsbury and the Hampstead hills. Ida helps with the decorating, as usual.<br><b>1911:</b> <i>In a German Pension</i> is published, built from what she watched at the spa. Her name starts to travel beyond the <i>New Age</i>.<br><b>Late 1911:</b> a dinner is arranged to introduce her to an Oxford undergraduate co-editing a bilingual quarterly called <i>Rhythm</i>. His name is <b>John Middleton Murry</b>. Tomalin’s verdict is that he would play a crucial and largely unfortunate part in her life. He becomes her lodger here. They address one another as “Mansfield” and “Murry”, shake hands at night if they are both in, and live separate lives.<br><b>April 1912:</b> her parents, Chaddie, Jeanne and Leslie sail for New Zealand. She has been calling her mother “Jane” since 1909. Neither keeps the other’s letters. Her mother never restores her to the will. The two women never meet again.',w:900,c:[51.5236,-0.1147]},
+ {n:'Runcton, near Chichester, England',d:'1913',e:'<b>The wedding house.</b><br>Tired of London, she and Murry find a small house in the salt-marsh country between Chichester and Selsey, with a walled garden and trees. She calls it their wedding house and imagines having a child there. “At present I don’t care any more for cities,” she tells her cousin Sylvia. They are certain enough to take a three-year lease and furnish the whole place on hire-purchase.<br>It fails. <i>Rhythm</i>, renamed the <i>Blue Review</i>, collapses under debts too large for Murry or any of its backers. Her allowance is going straight to the printers and he is grinding out reviews to stay afloat.',w:800,c:[50.8250,-0.7600]},
+ {n:'Cholesbury, Buckinghamshire, England',d:'1913',e:'<b>‘The Gables’, and a room of someone else’s choosing.</b><br>Penniless, and with her health requiring she leave London, they take a house near the Cannans in the Chilterns about thirty miles west of London. The Cannans have a converted windmill packed with books. The Murrys get a small semi-detached brick villa on the Common: a ground-floor bathroom stuck on at the back, an outdoor lavatory, not enough hot water. The plan is that Katherine lives there in the fresh air while Murry comes down at weekends.<br>She grows restless and resentful of the domestic role and leaves without regret. They move to a flat in <b>Chaucer Mansions</b>, Queen’s Club Gardens, West Kensington. Ida takes her own furniture out of storage to lend them. Murry commandeers the sitting room as his study. Katherine is left the kitchen to work in.',w:800,c:[51.7500,-0.6500]},
+ {n:'31 Rue de Tournon, Paris',d:'January 1914',e:'<b>Keeping the books in verse.</b><br>A location the biographies pass over, recovered from a surviving notebook. She is in Paris in the sixth arrondissement, a few streets from the Luxembourg, keeping a weekly household account dated <b>17 January 1914</b>: eggs, wood, cigarettes, butter and bread, a jug and basin, curtain material, a bill with the sewing woman, the femme de ménage.<br>What makes the page worth having is that she cannot leave it alone as a ledger. She breaks into comic verse between the columns, rhyming her way through tea, the chemist and the marmalade, and complaining that tips and fares have skipped about her day like lambs and left her fleeced. A woman with almost no money, itemising it to the centime, and turning the arithmetic into doggerel.<br>The notebook survives because it was a working account book rather than a diary. The diaries from these years she destroyed. (<i>The Diaries of Katherine Mansfield</i>, Notebook 33, Alexander Turnbull Library.)',w:800,c:[48.8495,2.3365]},
+ {n:'Chesham, Buckinghamshire, England',d:'1914',e:'<b>Rose Tree Cottage, and the Lawrences next door.</b><br>The Lawrences take a cheap cottage called The Triangle at Chesham. On her twenty-sixth birthday the Murrys install themselves there too. Lawrence has lost his summer bloom, looks thin and unwell, and has started to grow a beard.<br>Murry rides out daily on a bicycle looking for a second cottage, which leaves Katherine and Frieda talking. “She trusted me. I was older and she told me much of her life,” Frieda said. Murry finds <b>Rose Tree Cottage</b> three miles or so across the fields at five shillings a week. Lawrence insists on helping to prepare it, is scornful of Murry’s languid way with a paint brush, hisses “Get it done!” and finishes the job himself at double speed. The two couples then dine together twice a week, the men sharing the cooking.<br>One November night a quarrel breaks out over Frieda’s grief for the children she has lost. Frieda flees to Rose Tree Cottage in tears. Katherine sets off into the dark in wellington boots with her skirts tucked up, the duck pond having spread right across the lane. This is the year the Rananim idea begins to take shape.',w:900,c:[51.7050,-0.6120]},
+ {n:'Gray, France',d:'February 1915',e:'<b>Francis Carco: a Literary Bohemian.</b><br>She is in Paris on 16 February 1915. Three days later, on false pretences, telling the French military authorities she is travelling to visit an aunt and uncle, she takes the train into the closed Western Front war zone to reach Francis Carco, a corporal billeted with the French army near Gray in Burgundy. She stays four nights. She is a civilian, a woman, and a foreigner in a zone forbidden to all three. She sees soldiers at close range for the first time, an inn where they drink mirabelle and talk with the particular quiet of men before a front they cannot describe. The visit becomes the short story An Indiscreet Journey, written that May and published posthumously by Murry in Something Childish and Other Stories, 1924.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/carco1915.png'],c:[47.4453,5.5921]},
+ {n:'Paris',d:'March–May 1915',e:'Zeppelin raid over the city, 7 March 1915. Searchlights over the Seine. She is staying alone at Francis Carco’s flat near the Quai des Fleurs while he is away at the front. Between March and May she divides her time between here and Murry’s flat in London. In the flat she writes ‘An Indiscreet Journey’, the story drawn directly from the Gray trip and these rooms. She also begins ‘The Aloe’, the manuscript that will become Prelude. In May, a second Zeppelin raid leaves a crater in the street outside the building. She does not stop writing. (Harman, pp. 124–125.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/z1.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/paris_zeppilin_damage_1915.jpeg'],c:[48.8566,2.3522]},
+ {n:'Elgin Crescent, Notting Hill, London',d:'March–May 1915',e:'<b>Three crossings in three months.</b><br>Between the trips to Paris she is back in London at the end of March and hates Murry’s rooms here. April passes in dissatisfaction. She crosses to France for the third time in as many months and reinstalls herself in Carco’s flat, working hard on her book: “Ça marche, ça va, ça se dessine; it’s good.” By night she dreams of Rupert Brooke, whose death has just reached England.<br>She is also writing to <b>S. S. Koteliansky</b>, telling him he is “one of my people” and signing herself “Kissienka”, a name she keeps for him alone. To Murry, who suggests he might be happier away with her for a while so he would know she was loving him, she replies with a single line: “Fancy GIVING YOURSELF UP to LOVING someone for a fortnight.” She ends that letter “I am ill and alone voilà tout”.<br>In June Murry is prevailed on to leave Elgin Crescent and they move to Acacia Road, where she finally gets a garden and an attic study of her own. Murry had always been inclined to think she could work in the living room.',w:800,c:[51.5115,-0.2050]},
+ {n:'London, St John’s Wood',d:'June–October 1915',e:'Leslie ‘Chummie’ Beauchamp arrives in England for military training, 3 February 1915. In June, Katherine and Murry move to 5 Acacia Road, St John’s Wood — a large white-stuccoed house on three floors with a pear tree in the garden. Through the summer Leslie visits frequently; it is the last sustained time the siblings spend together. He spends his final leave at Acacia Road before being transported to the Front on 22 September. He is killed in a grenade training accident at Ploegsteert Wood, Belgium, 7 October 1915, aged 21. Katherine writes to Koteliansky on 19 November: ‘Acacia Road and all that it implied is over – for ever.’ The pear tree appears three years later in her story ‘Bliss’ (1918). She leaves for France within days. (Kimber, 2020; Collected Letters, vol. 1, p. 119.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/CHUMMIE.jpeg'],c:[51.5316,-0.1693]},
+ {n:'Bandol',d:'1915–1916',e:'The Villa Pauline winter. She begins reworking The Aloe. She writes to her father that Chummie’s loss ‘has changed the course of my life for ever.’ Soon after, she writes a poem to her deceased brother, beginning: ‘Last night for the first time since you were dead, I walked with you, my brother, in a dream.’ His death reshapes her writing. She turns to nostalgic recollections of their shared New Zealand childhood, determined ‘to make our undiscovered country leap into the eyes of the old world.’ The reworking of The Aloe grows directly out of this grief. It will become Prelude.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/bandol-villa-pauline.jpeg'],c:[43.1354,5.7530]},
+ {n:'Zennor, Cornwall, England',d:'April–June 1916',e:'Lawrence’s Rananim experiment at Higher Tregerthen. “So full of huge stones.” “I felt very antagonistic to the whole affair,” she wrote in her journal about Lawrence’s communal-living scheme, well before the Zennor experiment even began. She once suggested Lawrence name his cottage “The Phallus,” and reported that Frieda thought it a very good idea — a rare moment of the two women getting a joke together rather than clashing. Ten weeks.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/LAWRENCES.png'],c:[50.1918,-5.5679]},
+ {n:'Mylor, Cornwall, England',d:'June 1916',e:'She and Murry leave Zennor for Mylor. They moved mid-June 1916, about thirty miles from Zennor to Cornwall’s south coast — leafier, softer country than the bleak moorland at Higher Tregerthen. The stated reason versus the real one: they used the dampness of the Zennor cottage as their official excuse for leaving. The real reason, as multiple biographical sources note, was that living alongside the Lawrences had been “always stressful” — the Rananim experiment had genuinely worn them down.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/TOPAZK%2BMURRY1-very_compressed-scale-4_00x.jpeg'],c:[50.1789,-5.0553]},
+ {n:'Garsington Manor, Oxfordshire, England',d:'1916–1917 · repeated visits',e:'Ottoline Morrell’s manor. First visit summer 1916, when Strachey writes to Woolf: “Among the rout was Katherine Mansfield — if that is her real name.” Katherine returns as a repeat guest, including the Christmas 1916 house party, mixing with the Lawrences, Aldous Huxley, and T.S. Eliot. Ottoline gives her the Spanish silk shawl.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/TOPAZLADY_OTTERLINE-very_compressed-scale-2_00x%20(1).jpeg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/GARCINGTON.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/aldous-huxley-2665140-1b1b01d044c3464e955af162f5467ba7.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/TOPAZTSELIOT-very_compressed-scale-4_00x.jpeg'],c:[51.7167,-1.1667]},
+ {n:'Richmond, London, England',d:'February 1917',e:'Meets Virginia Woolf at Hogarth House, which stood on Paradise Road, Richmond upon Thames — where the Woolfs founded the Hogarth Press. “We have got the same job, Virginia.” After a later dinner there, Katherine writes privately of the evening: “The memory of that last evening is so curious: your voice &amp; Vanessa’s voice in the dark, as it were — white rings of plates floating in the air — a smell of strawberries and coffee… My God I love to think of you, Virginia, as my friend.” Virginia’s own diary tells a different story. On 11 October 1917, after that same dinner, she writes: “we could both wish that one’s first impression of K.M. was not that she stinks like a — well civet cat that had taken to street walking. In truth, I’m a little shocked by her commonness at first sight, lines so hard and cheap. However, when this diminishes, she is so intelligent and inscrutable that she repays friendship.” Hogarth publishes Prelude, 1918.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/Virginia-Woolf.webp'],c:[51.4613,-0.3037]},
+ {n:'Paris, France',d:'March–April 1918',e:'She and Ida Baker are trapped in the city during a German bombardment. Fearing for her health, they try to leave for England but are not permitted to depart while Paris is under attack. They wait it out from March until 11 April, when they finally return to London. Murry says she is barely recognisable.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/1918_ST_GERMAIN.jpeg'],c:[48.8606,2.3376]},
+ {n:'London, England',d:'1918',e:'Coughing blood. Her first tubercular haemorrhage comes in February 1918. ‘How unbearable it would be to die — leave ‘scraps’, ‘bits’… nothing really finished,’ she writes. Her divorce from Bowden becomes absolute on 29 April. She marries Murry on 3 May, though the day itself feels like an anticlimax. Despite her failing health she writes ‘Bliss’ and ‘Je ne parle pas français’ this year. In August they move to Hampstead, soon after the death of her mother. She refuses her doctor’s advice to enter a sanatorium, unwilling to be cut off from her writing.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/TOPAZIMG_4067%202-standard-scale-2_00x-cropped.jpeg'],c:[51.5100,-0.1350]},
+ {n:'Looe, Cornwall, England',d:'1918',e:'Convalescence on the Cornish coast. Tuberculosis has just been confirmed. She is recovering from her first severe pulmonary haemorrhage, newly married, and startled by ordinary kindness. The illness has stripped her defences. On 19 May 1918 she writes to Murry: “I’m always astonished, amazed that people should be so kind…” (Odette will copy this quote into the Verlaine section of her poetry volume at Ravensbrück). On 17 June, the painter Anne Estelle Rice paints her iconic portrait here.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/61e2ac921d80d52865707950e17ff8e3.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/LOOE.jpeg'],c:[50.3536,-4.4542]},
+ {n:'Ospedaletti, Italy',d:'1919–1920',e:'Genoa — “The weather is wonderful, like silk. People are bathing down here, and the water is so clear you can see their arms and legs, almost their toes. This house looks like it belongs to fairies; it’s a lovely place to live. And the view of Ospedaletti is delightful.” Katherine moved to the Ligurian town in 1919. Her lungs needed a mild climate. Letters to Murry from rooms he is not in. In the winter of 1919 to 1920 she writes to him: “I feel so awfully like a tiny girl who someone has locked up in the dark cupboard.” Her tuberculosis is advancing. She is too ill to work, alone in a damp Italian pension while Murry stays in London. It is, by her own reckoning, among the darkest letters she writes. Odette will transcribe it onto the last page of her poetry volume.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/Ospedaletti.webp'],c:[43.8011,7.7167]},
+ {n:'Menton, France',d:'1920–1921',e:'The Villa Isola Bella. In March 1920, while moving between Ospedaletti and Menton, she writes to Murry: “I want to live by the spirit of Love.” Odette will transcribe these words in Ravensbrück. Later, on 24 October 1920, settled now at the Villa Isola Bella and writing to Sydney and Violet Schiff, she notes: “It is curious for one who has been much alone — this sinking back into silence.” She is steadier here. Tuberculosis is present but not in acute crisis, and she is well enough to work. Murry visits in early 1921. Odette will transcribe this line too, beneath Rimbaud’s Veillée in her poetry volume. From September 1920 to May 1921, she wrote three stories in particular: ‘The Daughters of the Late Colonel’, ‘Miss Brill’, and ‘Poison’. She completed ‘The Daughters of the Late Colonel’ in December 1920 and called it “the only story that satisfies me to any extent.” It remains the standout piece from this period, finished the same month her collection Bliss and Other Stories was published. Sources vary on which two or three stories get the top billing, but this one is consistently named the best of them.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/KM_BAD_.jpg'],c:[43.7745,7.4977]},
+ {n:'Sierre, Switzerland',d:'1921',e:'In May 1921, Katherine Mansfield travelled from France to Switzerland, seeking ‘fresh air treatment’ for her tuberculosis. She spent seven months in the Sierre district, staying mostly at the rented Chalet des Sapins in Montana. She enjoyed an intensely creative period, writing some of her now best-loved stories such as ‘At the Bay’, ‘The Garden Party’ and ‘The Doll’s House’. On 4 July 1922 she writes to S.S. Koteliansky: “The grasshoppers ring their tiny tambourines and down below the gardener is raking the paths…” Months of experimental X-ray treatment in Paris have just failed. For the first time in a long while she is free from organising her life around a cure, and the line shows a freed, acute attention to what is actually present. Odette will give this passage its own name in her transcriptions: ‘Tiny Tambourines.’',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/SIERRA_CHALET1%20copy.jpg'],c:[46.2919,7.5353]},
+ {n:'Fontainebleau (Avon), France',d:'October 1922 – 9 January 1923',e:'Le Prieuré, Gurdjieff’s institute. She manages three months. Gurdjieff gives her a loft above the cattle and tells her to be present to what remains. On 11 October 1922, writing to Murry, she reckons hard with her old life: “Were we positive, eager, real — alive? No, we were not. We were a nothingness shot with gleams of what might be.” She has been at Gurdjieff’s institute since 3 October. She has three months left to live. Her handwriting is now visibly lighter. Odette will transcribe this passage at Ravensbrück. She dies on 9 January 1923, aged thirty-four, and is buried at Avon. Murry fails to pay for her grave in perpetuity, and her remains are moved to the pauper graveyard within the year. In 1924 Countess Russell discovers the problem. Sir Harold Beauchamp arranges a proper re-interment, completed in 1929.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/KM2023.png',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/prierre.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/Georges_Gurdjieff%20Topaz%20Gigapixel%204x%20scale.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/06-fontainebleau-avon.jpg'],c:[48.4046,2.7016]},
+ {n:'London, England',d:'1927–1928',e:'Murry inherits her manuscripts. He compiles and publishes the Journal of Katherine Mansfield in 1927, followed by The Letters of Katherine Mansfield in 1928. Both become bestsellers. She had specifically not wanted her journals published. Murry shapes her public image into something more saintly than she was, suppressing the harder edges of her character, and earns a substantial income from her royalties. Ida Baker, who devoted decades to her care, receives none of the royalties. Murry pays her £10 a month to decipher Katherine’s notoriously difficult handwriting and transcribe it for him. The Letters becomes the basis for a popular 1938 Albatross reprint, published in Leipzig as Volume 52 of their English-language paperback series for continental readers. It is this single book edition, that a guard will give to Odette at Ravensbrück in 1944.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/THELETTERS_VOL2_1928.webp',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/b1.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/b2.jpg'],c:[51.5040,-0.1200]},
+];
+const OH = [
+ {n:'Amiens, France',d:'28 April 1912',e:'Odette Marie Céline Brailly is born. Her father Gaston is killed at Verdun in 1918.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/Rue_des_Trois_Cailloux_a%CC%80_Amiens_avant_1914.jpg'],c:[49.8942,2.2957]},
+ {n:'Normandy, near Dieppe, France',d:'1920s',e:'Childhood by the sea after blindness and illness. She watches the Channel ships and decides she will marry an Englishman.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/New%20Note.jpeg'],c:[49.9229,1.0777]},
+ {n:'Boulogne-sur-Mer, France',d:'early 1930s',e:'Marries Englishman Roy Sansom. First daughter Françoise (Nicole Miller-Hard’s mother) born 1932. The family moves to London.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/ROY_SANSOM.JPG',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/boulogne-quay.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/b_aurevoir.jpg'],c:[50.7264,1.6147]},
+ {n:'London, England',d:'1942',e:'Spring 1942. She hears a Royal Navy radio appeal for photographs of the French coast and sends some from her childhood in Amiens and Boulogne, noting that her parents were French and she knows the coastline. She posts them to the wrong service. The appeal was the Admiralty’s; the package reaches the <b>War Office</b>, and that error is why any of this happens. SOE sat inside the War Office under the cover designation MO 1 (SP). Had the photographs gone where she intended, the Navy would simply have filed them.<br><b>Major Guthrie</b> of the War Office writes a week later. She goes in assuming she is collecting her photographs. Over tea he asks about Amiens and Boulogne and she offers to sketch the fish market, then he comes to the point. On <b>28 June</b> a second letter arrives from a name Guthrie never mentioned: <b>Captain Selwyn Jepson</b>, room 238, Hotel Victoria, Whitehall, on <b>10 July</b>. Jepson was F Section’s recruiting officer, run out of 64 Baker Street.<br><b>Why she said yes.</b> Her father Gaston died at Verdun thirty days before the Armistice, going back to the line for two wounded men. Every Sunday her grandparents took her and her brother to his grave at La Madeline, and her grandfather told them that in twenty years there would be another war and it would be their duty to match him. She said she was not war minded, but the seed was there.<br><b>Why she nearly didn’t.</b> She refused. Her children came first, she had not got the brain for it, and there were physical requirements she could not meet. She offered to do translation instead. They told her to go away and think about it, and did not press her, which she noticed. On being told she had three daughters, one of them said: “Good God! You still look like a child yourself.”<br><b>What she settled before leaving.</b> She placed the girls at St Helen’s convent and left a stack of letters with the nuns to be handed out at intervals. She had already decided she would prefer a firing squad to the rope, on the grounds that it was quicker. Her comfort was that the Gestapo would never know about her children: her heart was already broken by leaving them, and whatever they did could only be physical, because they could not break what was already broken.<br>Buckmaster reads a poor training assessment and sends her anyway. Code name Lise; inside SOE, agent S.23.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/07-london-1942-soe.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/3girls.jpg'],w:1200,c:[51.5074,-0.1278]},
+ {n:'Gourock, Firth of Clyde, Scotland',d:'October 1942',e:'From London north by rail to the Clyde. Troopship departure for Gibraltar from the wartime convoy anchorage.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/08-gourock-firth-of-clyde.jpg'],c:[55.9617,-4.8180]},
+ {n:'Gibraltar',d:'late October 1942',e:'Arrival by troopship from the Clyde. Stays 2 days, Departure by felucca. Eight days at sea, the boat overloaded with agents and weapons.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/GIBRALTAR1942.jpg'],c:[36.1408,-5.3536]},
+ {n:'Cassis, France',d:'night of 2/3 November 1942',e:'Landing near Cassis. CARTE contacts. Two or three hours ashore, then on to Cannes. (SOE debrief, National Archives, Kew.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/CASSIS_FILM_ARCHIVE.jpg'],c:[43.2140,5.5396]},
+ {n:'Cannes, Villa Augusta, France',d:'3 November 1942, 11.30 am',e:'She meets Raoul: Peter Churchill, at the Villa Augusta at 11.30 on the morning of 3 November 1942. Her orders had been Operation Clothier, her own circuit at Auxerre. She never gets there. The south has filled with Italian troops and the papers cannot be had, so she is absorbed into his network instead.<br><br>The first meeting does not go well. She records that he was “almost rude” and said he would do nothing until London instructed him. She told him she had not come to sit about doing nothing and offered to help. He agreed. Privately she thought SPINDLE was too big, that she would last longer working independently, and that there were “certain people I did not like or trust.” She was right on every count.<br><br>She works as courier, cycling long distances for grid references and drop timetables, measuring fields for landing sites, finding safe houses. She has never ridden a bicycle before France and learns by falling into a hedgerow. Impatient, impulsive, with something of the commando in her. (Starns, Odette, ch. 6; TNA HS9/648/4, HS9/314.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/CANNE1.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/CANNE6.jpg'],c:[43.5528,7.0174]},
+ {n:'Marseille, France',d:'c. 6 November 1942',e:'Her first solo mission, four days after landing. Deliver a message, meet Marsac and Muriel, bring back a case. She confronts a German soldier for the first time at the station and finds he looks nothing like the propaganda films. She reads the public notices on the walls: sheltering an enemy agent means a military tribunal and, in some cases, death. Rewards are offered for information. She cannot yet conceive that a Frenchman would betray another for money. The case, containing plans of the port among other documents, is lost for two hours and finally found in an understairs cupboard. By then she has missed her train and the nine o’clock curfew has fallen. Marsac writes an address on a scrap of paper. It is a backstreet brothel used by German soldiers. She barricades the door with the mattress, a dresser and two chairs, checks the drainpipe as an escape route, judges it will not hold her, and sits in a chair by the door with her eyes half closed. At three in the morning German boots on the stairs, searching for a deserter. The madam tells them the girl in that room has smallpox and her food is left outside the door. The soldiers leave. At dawn Odette washes, does her hair and make-up, and is let out through a back alley. She is back in Cannes for breakfast by 11.30. She expects praise. Peter warns her about smugness, knowing overconfidence kills agents. She writes that she still has a lot to learn. (Starns, Odette, ch. 7; TNA HS9/648/4.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/CANNE2.jpg'],c:[43.2965,5.3698]},
+ {n:'St Jorioz, Annecy, France',d:'to 16 April 1943',e:'SPINDLE on the lake, headquartered at the Cottets’ Hôtel de la Poste. Italian troops descend on the hotel on the morning of 16 April 1943. That night, around 11pm, Madame Cottet comes to Odette’s room. She goes down to the hall and finds Hugo Bleicher — “Henri” — with Italian soldiers and a tall thin Gestapo man. He offers his hand. She does not take it. A gun is put in her back. Reasoning that if she screams Peter might jump from the window into a surrounded hotel, she leads them upstairs and says only: “there is the Gestapo.” She has already swapped their jackets to hide the day’s messages, and slips his wallet into her sleeve, later dropping it under the back seat of the car. The Gestapo never find it. Odette believed the courier Chaillan had told Henri that Peter was returning. At the moment of arrest, they invent a cover story to save themselves. They claim to be husband and wife, and that Peter is a nephew of Winston Churchill. Neither claim is true. It works well enough to keep them as bargaining chips rather than being shot outright as spies. The lie becomes truth in time.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/ODETTES%20ARREST%20FILM%20%20Topaz%20Gigapixel%204x%20scale%20copy.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/odd1950_bw_neg_002%20(1).jpg'],c:[45.8302,6.1620]},
+ {n:'Grenoble, France',d:'late April 1943',e:'Taken by lorry from Annecy with Peter. In the barracks at Annecy an Italian NCO had behaved decently towards her — unasked, he brought word at midday that Peter was still alive, said the situation was very difficult for a woman, and tried to find her a doctor. She had no seat or water in her own room and spent the days in his office because he was never there. Italian soldiers carried messages between the two prisoners daily. Peter sent his as a man would to a woman he loved, which appealed to the Italians. On the lorry to Grenoble she and Peter consolidate their story. He is reluctant to admit to the name Churchill. She insists. He has already been beaten and has a broken finger and injuries to the side of his face. The Italians feed them oranges and they sing the whole way. She calls it the Italian calm before the German storm. (Starns, Odette, ch. 9; TNA HS9/648/4.)',c:[45.1885,5.7245]},
+ {n:'Turin, Italy',d:'1943',e:'One extremely disturbed night in a cell with prostitutes, en route between Grenoble and Nice. (Starns, Odette, ch. 10.)',c:[45.0703,7.6869]},
+ {n:'Nice, France',d:'1943',e:'Seven days. The Italians are uneasy about holding a prisoner of her profile and are preparing to hand her back to the Germans. It is on the train between Nice and Toulon that she and Peter speak through the windows of their two compartments and agree to maintain the lie that they are Mr and Mrs Churchill. Everyone else questioned says they were not married. They keep it up regardless. (Starns, Odette, ch. 10; TNA HS9/315.)',c:[43.7102,7.2620]},
+ {n:'Toulon, France',d:'1943',e:'Handed back to the Germans. From here she is taken under armed guard to Fresnes prison in Paris and into solitary confinement. (Starns, Odette, ch. 10.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/FRESNES4.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/FRESNES1.jpg'],c:[43.1242,5.9280]},
+ {n:'Fresnes, Paris, France',d:'1943–1944',e:'Fresnes prison. Father Paul Steinart secretly gives her the two Poésies et Dessins volumes. She is held here from 8 May 1943 to 12 May 1944, mostly in solitary confinement. The cell has hermetically sealed windows, limiting air and daylight. Food rations are cut to a starvation level. In June 1943 she is condemned to death as a British spy. Conditions ease afterward. She is moved to a warmer cell with another prisoner, and the interrogations stop.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/FRESNES%20_LARGE.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/2_POESIS_ET_DESSINS%20copy.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/FRESNES3.jpg'],c:[48.7563,2.3222]},
+ {n:'84 Avenue Foch, Paris, France',d:'1943–1944',e:'At least fourteen Gestapo interrogations. What they want is the whereabouts of two men: Francis Cammaerts and Arnaud. She alone knows, because she alone had relocated them after London warned her that Henri could not be trusted.<br><br>Arnaud is Lieutenant Adolphe Rabinovich, their radio operator. Abrupt, volatile, humourless, swearing constantly, impossible outside his work, and the best at the job in France. Churchill is the only man who can handle him. Arnaud likes Odette and will work with no one else when Churchill is away. She had written that she felt perfectly sure of him and that he would die for her, and that the three of them formed a perfect team who would readily lay down their lives for one another. This is the man she is protecting, one room at a time, twelve times over.<br><br>She gives them nothing. They scorch her back with a red-hot poker. They pull out all her toenails. She will not give up her comrades. In June 1943 the Nazis condemn her to death on two counts. She answers: “Then you will have to make up your mind on what count I am to be executed, because I can only die once.” Even here there are small human moments. She later recalls meeting other captured women agents inside the house: “One of the girls had a lipstick and we all used it, passed it around and put it on.”<br><br>Her George Cross citation of 20 August 1946 records the arithmetic of what she did here. She held the marriage story through at least fourteen interrogations despite considerable contrary evidence. She drew the Gestapo onto herself, telling them Peter had only come to France on her insistence, took full responsibility, and agreed that it should be she and not he who was shot. The Gestapo stopped questioning him after two interrogations. (TNA, George Cross citation, Central Chancery of the Orders of Knighthood.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/84_avenue_foch%20copy.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/2SQUARE%20DE%20L%27AVENUE%20FOCH%20copy.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/84avenue_foch.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/B%2BW.jpg'],c:[48.8720,2.2790]},
+ {n:'Karlsruhe, Germany',d:'from 12 May 1944',e:'Two months in a German civil prison with three German criminals. She travels here from Fresnes on a night train, handcuffed, with seven other captured SOE women. None of them have met before, despite working similar missions. Certain they are going to their deaths, they tell each other their real names as well as their code names. At Karlsruhe they are held in separate cells, given manual work, and treated as ordinary prisoners. For eight weeks the authorities seem to forget them. In July, orders arrive from Berlin. Four of the women — Andrée Borrel, Vera Leigh, Sonia Olschanezky, and Diana Rowden — are taken to Natzweiler and executed. The others go on to Ravensbrück or Dachau.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/KAHLRUHE1.jpg'],c:[49.0069,8.4037]},
+ {n:'Frankfurt, Germany',d:'1944',e:'Held in an iron mesh cage, five feet by four by six, at a transit facility during her journey to Ravensbrück. She is processed here as a high-profile prisoner under the ‘Night and Fog’ (Nacht und Nebel) directive. Later that day two other women are thrown into the cage with her. There is no sanitation, no water, and very little food. (Starns, Odette.)',c:[50.1109,8.6821]},
+ {n:'Halle, Germany',d:'1944',e:'By the time she reaches Halle, the other women from Karlsruhe have already gone on ahead of her. She endures further Gestapo brutality here. Forty-five women in one room. Five days.<br><br>Somewhere on this journey the women talk. Odette later described it plainly: they did what women do together in difficult circumstances, tried to keep their spirits up, exchanged views, talked about people from the London office. Some were unsure about certain people in London. When you are captured, she said, you look for reasons. They had had time to think. Where was the source. You search endlessly.<br><br>They were right to wonder. As early as spring 1943 British agents were being parachuted straight into the arms of the Gestapo. Arnaud, the radio operator whose location Odette had refused to give up through twelve interrogations at Avenue Foch, was dropped directly into enemy hands some months after her arrest and shot. London called it an unhappy staff error. She does not know this. She will carry on to Ravensbrück still believing her silence held. (Starns, Odette, ch. 10; nigelperrin.com.)',c:[51.4826,11.9705]},
+ {n:'Neustadt-Glewe, Germany',d:'1 May 1945',e:'On 1 May 1945 Camp Commandant Suhren flees Ravensbrück and the advancing Russian army with a human shield. He drives Odette west through the forests of northern Germany towards the American lines, all day and all night, the boot loaded with the camp records he could not burn. Fritz Suhren stops his Mercedes-Benz at an American checkpoint near Neustadt-Glewe, Mecklenburg. He says: “This is Frau Churchill — she has been my prisoner.” Odette speaks “This is the Commandant of Ravensbrück. You make him your prisoner.” Suhren is arrested on the spot. The Americans take his gun, break it at the barrel, and hand it to her.<br><b>Then she asks to sleep outside.</b> It is night, around ten o’clock. The Americans offer her a room. She turns it down and asks to stay in the car until morning, telling them she has not seen the stars for a very long time. She had spent three months and eleven days in an underground cell with the window bricked up, then months more in a cell six yards from the crematorium with the ashes coming through a gap in the window. Offered a bed by the first friendly soldiers she has seen in two years, she chooses the dark and the open sky. A young American soldier covers her with a blanket.<br>She had a second reason and did not mention it. Suhren had loaded the camp records into the car, unable to burn them all in time. She knew they were there. She spent the night going through them, and she brought them back to England. (Starns, Odette, ch. 12; IWM oral history, 1985.) He is tried at the Hamburg Ravensbrück trials and hanged on 12 June 1950. She keeps the pistol. It is now in the Imperial War Museum London. The book, the leaf and the two poetry volumes survive. So does she.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/SUHREN.jpeg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/1.jpg'],w:1000,iw:400,c:[53.3776,11.5955]},
+ {n:'Croydon Airport, England',d:'May 1945',e:'Odette is flown in to England following her liberation. She is taken directly to hospital in London for treatment and debrief. She returns to Britain around VE Day, 8 May 1945, weighing 25kg. Months of intensive medical rehabilitation follow, and more than a year later her doctor is still treating her for what he calls nervous tension.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/ODETTE_JUNE1945.jpg'],c:[51.3565,-0.1166]},
+ {n:'Somerset, England',d:'1945',e:'The homecoming. Her three daughters do not recognise their mother until she speaks.',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/O%2B3GIRLS1.jpg','https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/O%2BPeter%2BF.jpg'],c:[51.05,-3.10]},
+ {n:'Hamburg, Germany',d:'16 December 1946',e:'The Ravensbrück war crimes trials. Before the War Office could launch its publicity campaign, Odette had to testify against her persecutors. On the morning of 16 December 1946 she walks into the Hamburg courtroom with her feet still protected by cotton wool bandages and oversized men’s black shoes, wearing her FANY uniform, and looks up at the gallery. Seven female SS guards sit in silence awaiting the outcome of their trial. Nearly all are attractive and would not have looked out of place in any normal crowd of women. There is no obvious clue to their nature. Her testimony as reported: she saw screaming and struggling women dragged to the crematorium, the doors opened, the women disappeared, the doors closed, more screams, then silence, and the women did not come out again. The Judge Advocate General asked whether she swore the women were burnt alive. She replied that all she could swear to was that she saw them taken to the crematorium. All sixteen accused in the first Ravensbrück trial are found guilty on 3 February 1947 and eleven death sentences passed. Commandant Suhren is not among them; he had escaped British custody. (Starns, Odette, ch. 13; The Times, 17 December 1946.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/ODETTE_FRENCH_ID_CARD.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/HAMBURG1.png'],c:[53.5511,9.9937]},
+ {n:'Walton-on-Thames · Hersham, England',d:'1956–1995',e:'Marriage to Geoffrey Hallowes, 1956. She dies 13 March 1995. At her funeral Geoffrey speaks Katherine’s words.<br><br>Above is the page itself: Odette’s hand, in pencil, on page 108 of Poésies et Dessins Vol. 2, facing Apollinaire. She copied it from the 1938 Albatross reprint of The Letters of Katherine Mansfield, the book a guard gave her at Ravensbrück.<br><br>In Katherine’s letter the passage starts earlier, with her refusal of God: she cannot believe, science makes it impossible, and no good God could allow his children to suffer. Love is what she reaches for only after clearing God away. Odette began copying at “I want to live by the spirit of Love” and left that part out. She had returned to her Catholic faith in the bunker. She took the conclusion and declined the premise. (KM to Richard Murry, Villa Flora, Menton, 24 February 1920; MS Alexander Turnbull Library. Artefact held by the family.)',img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/IWANTOLIVE.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/ODETTE_HERO-DeNoiseAI-clear.jpg'],quote:'<span style="white-space:nowrap">“I want to live by the spirit of Love — love all things.</span> See into things so deeply and truly that one loves… Why should one love? No reason — it’s just a mystery. But it is like light. I can truly see things in its rays.”',c:[51.3868,-0.4133]},
+];
+const RAV = {
+ n:'Ravensbrück, Germany',d:'1944–1945',
+ e:'The Bunker. Three months and eleven days in total darkness. Skeletal, diseased and dying. A guard hands her a book: the 1938 Albatross reprint of ‘The Letters of Katherine Mansfield’. She stitches the broken book back together and binds it in German newspaper, discovers Katherine, and meticulously transcribes KM’s words into the dusty margins of her poetry volumes. Ravensbrück was the largest women’s camp in Nazi Germany (second only to Auschwitz-Birkenau’s women’s camp), opened May 1939 with roughly 900 prisoners, over 130,000 women and 20,000+ men passing through by 1945, over 50,000 held by January 1945, an estimated 20,000 to 30,000 deaths, and 5,000 to 6,000 gassed in the camp’s own gas chamber before Soviet liberation.',
+ img:['https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/WALKINGINWALKINGIN5318_289-low_res-scale-2_00x-art-scale-4_00x.jpeg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/crematorium.png',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/13-ravensbruck.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/2BUNKER%20copy.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/Odette%20Hallowes%20GC%20MBE-The%20Leaf-48%20copy%202.jpg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/RAVENSBRUK_INMATES.jpeg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/WALKINGIN2-art-scale-4_00x.jpeg',
+  'https://raw.githubusercontent.com/GREGMillerHard/odette-katherine-map-images/main/5318_290%20copy%202.png'],
+ w:600,
+ c:[53.1900,13.1400]
+};
+// ── Layers ───────────────────────────────────────────────────────────────────
+function dot(color,r){return L.divIcon({className:'',html:
+ `<div class="pin" style="width:${r*2}px;height:${r*2}px;background:${color}"></div>`,
+ iconSize:[r*2,r*2],iconAnchor:[r,r]});}
+// Ravensbrück is where the two threads knot together — a stitched-X mark
+// in place of a plain dot, in the thread/gold color.
+function knot(color,r){return L.divIcon({className:'',html:
+ `<svg width="${r*2}" height="${r*2}" viewBox="0 0 24 24" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">
+   <circle cx="12" cy="12" r="10.5" fill="var(--parchment)" stroke="${color}" stroke-width="1.5"/>
+   <path d="M6 6 L18 18 M18 6 L6 18" stroke="${color}" stroke-width="2.1" stroke-linecap="round"/>
+   <circle cx="12" cy="12" r="1.6" fill="${color}"/>
+ </svg>`,
+ iconSize:[r*2,r*2],iconAnchor:[r,r]});}
+const gKM = L.layerGroup().addTo(map);
+const gOH = L.layerGroup().addTo(map);
+// Which woman a place concerns, appended to place names in tooltips, popups
+// and the timeline list. Ravensbrück (type 'gold') concerns both, so it is
+// left unlabeled — the legend already marks it as where the two stories meet.
+function nameTag(type){
+  if (type==='km') return ' (KM)';
+  if (type==='oh') return ' (OH)';
+  return '';
+}
+function popup(p,type){
+  let imgs = "";
+  // Images fill their popup up to this cap. An entry can set its own `iw` when
+  // a wide box would otherwise blow the picture up further than it deserves.
+  const cap = p.iw || 570;
+  if (p.img && p.img.length === 1){
+    imgs = `<img src="${p.img[0]}" alt="${p.n}" style="width:100%;max-width:${cap}px;display:block;border-radius:2px;margin:0 auto 8px;cursor:zoom-in" onclick='event.stopPropagation();showLightbox(${JSON.stringify(p.img)},0)'>`;
+  } else if (p.img && p.img.length > 1){
+    const dots = p.img.map((_,i)=>`<span class="dot${i===0?' active':''}" onclick="event.stopPropagation();carouselGoTo(this,${i})"></span>`).join('');
+    imgs = `<div class="carousel" data-images='${JSON.stringify(p.img)}' data-index="0">
+      <img class="carousel-img" style="max-width:${cap}px" src="${p.img[0]}" alt="${p.n}" onclick="event.stopPropagation();showLightbox(JSON.parse(this.closest('.carousel').dataset.images), parseInt(this.closest('.carousel').dataset.index||'0',10))">
+      <div class="carousel-nav">
+        <span class="carousel-arrow" onclick="event.stopPropagation();carouselMove(this,-1)">&#8249;</span>
+        <span class="carousel-dots">${dots}</span>
+        <span class="carousel-arrow" onclick="event.stopPropagation();carouselMove(this,1)">&#8250;</span>
+      </div>
+    </div>`;
+  }
+  // Quote runs at double the popup body size (17px → 34px). It is the last thing
+  // spoken over her grave, so it is set to carry the popup rather than sit in it.
+  const quote = p.quote ? `<blockquote style="margin:0 0 14px;padding:0 0 0 16px;border-left:2px solid var(--gold);font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:34px;line-height:1.32;color:#5a5140">${p.quote}</blockquote>` : "";
+  return `<div class="entry ${type||''}">${imgs}${quote}<h3>${p.n}${nameTag(type)}</h3><div class="pd">${p.d}</div>${p.e}</div>`;
+}
+function carouselUpdate(container, idx){
+  const images = JSON.parse(container.dataset.images);
+  container.dataset.index = idx;
+  const img = container.querySelector('.carousel-img');
+  img.src = images[idx];
+  // The next image may be taller than the one it replaces, which grows the
+  // popup upward and can push its head off the top of the map. Its height is
+  // unknown until it has loaded, so reposition then rather than now.
+  if (img.complete){
+    requestAnimationFrame(keepPopupInView);
+  } else {
+    img.addEventListener('load',  keepPopupInView, {once:true});
+    img.addEventListener('error', keepPopupInView, {once:true});
+  }
+  container.querySelectorAll('.dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
+}
+function carouselMove(el, dir){
+  const container = el.closest('.carousel');
+  const images = JSON.parse(container.dataset.images);
+  let idx = parseInt(container.dataset.index || '0', 10);
+  idx = (idx + dir + images.length) % images.length;
+  carouselUpdate(container, idx);
+}
+function carouselGoTo(el, idx){
+  const container = el.closest('.carousel');
+  carouselUpdate(container, idx);
+}
+const mkKM = KM.map(p=>L.marker(p.c,{icon:dot('#3c6e5a',6)}).bindPopup(popup(p,'km'),{maxWidth:p.w?fitW(p.w):(p.quote?fitW(920):400)}).bindTooltip(p.n+nameTag('km'),{direction:'top',offset:[0,-8],className:'place-label'}).addTo(gKM));
+const mkOH = OH.map(p=>L.marker(p.c,{icon:dot('#7a2530',6)}).bindPopup(popup(p,'oh'),{maxWidth:p.w?fitW(p.w):(p.quote?fitW(920):400)}).bindTooltip(p.n+nameTag('oh'),{direction:'top',offset:[0,-8],className:'place-label'}).addTo(gOH));
+const mkRAV = L.marker(RAV.c,{icon:knot('#a67c3d',13),zIndexOffset:1000})
+  .bindPopup(popup(RAV,'gold'),{maxWidth:RAV.w?fitW(RAV.w):(RAV.quote?fitW(920):400)})
+  .bindTooltip(RAV.n,{direction:'top',offset:[0,-10],className:'place-label'}).addTo(map);
+// Centre every popup in the map viewport on open, and re-centre once a late
+// image has loaded and changed the popup's height.
+// The popup currently on screen, so the carousel can reposition it after the
+// reader steps to an image of a different height.
+let openPopup = null;
+// Keep the open popup fully inside the map pane. Popups grow upward from their
+// marker, so a taller image pushes the head of the box off the top of the
+// screen. Called on open, after any late image load, and after every carousel
+// step.
+function keepPopupInView(){
+  if (!openPopup) return;
+  const el = openPopup.getElement();
+  const mapEl = document.getElementById('map');
+  if (!el || !mapEl) return;
+  // Deliberately no popup.update() here. Leaflet's update() re-renders the
+  // popup from its stored HTML string, which would wipe the carousel's
+  // current index and snap it back to the first image on every click.
+  // Measuring the live DOM is enough to reposition.
+  const rect = el.getBoundingClientRect();
+  const mapRect = mapEl.getBoundingClientRect();
+  const margin = 16;
+  // Distance from the popup's centre to the centre of the map pane.
+  let dx = (rect.left + rect.width /2) - (mapRect.left + mapRect.width /2);
+  let dy = (rect.top  + rect.height/2) - (mapRect.top  + mapRect.height/2);
+  // If the popup is bigger than the pane, centring would hide its head.
+  // Pin the top-left inside the margin instead so the reader starts at the top.
+  if (rect.height > mapRect.height - margin*2) dy = rect.top  - (mapRect.top  + margin);
+  if (rect.width  > mapRect.width  - margin*2) dx = rect.left - (mapRect.left + margin);
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1){
+    map.panBy([dx, dy], {animate:true, duration:.35});
+  }
+}
+map.on('popupclose', function(){ openPopup = null; });
+map.on('popupopen', function(e){
+  dismissIntro();
+  openPopup = e.popup;
+  requestAnimationFrame(keepPopupInView);
+  const el = e.popup.getElement();
+  const firstImg = el && el.querySelector('img');
+  if (firstImg && !firstImg.complete){
+    firstImg.addEventListener('load', keepPopupInView, {once:true});
+  }
+  // Click anywhere in the popup content (outside images/carousel controls,
+  // which stop their own click from bubbling) closes it.
+  if (el){
+    const content = el.querySelector('.leaflet-popup-content') || el;
+    content.addEventListener('click', function(){ map.closePopup(); });
+  }
+});
+// Katherine route: chronological polyline, rendered as a fine running stitch
+L.polyline(KM.map(p=>p.c),{color:'#3c6e5a',weight:2.2,opacity:.7,dashArray:'1 6',lineCap:'round'}).addTo(gKM);
+// Odette route: free movement as a running stitch, captivity as a bolder chain-stitch dash
+// Early years: Amiens → Normandy → Boulogne → (Dover Strait) → London
+const earlyOH=[OH[0].c,OH[1].c,OH[2].c,[51.10,1.35],OH[3].c];
+L.polyline(earlyOH,{color:'#7a2530',weight:2.2,opacity:.75,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// Rail: London → Gourock, overland to the Clyde.
+L.polyline([OH[3].c,OH[4].c],{color:'#7a2530',weight:2.2,opacity:.75,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// Troopship: Gourock → Gibraltar. Down the Firth of Clyde, out through
+// the North Channel past Rathlin and Malin Head, west of Ireland into the
+// Atlantic, south to the Strait. Representative convoy course, all offshore.
+const seaToGib=[OH[4].c,
+ [55.963,-4.834],
+ [55.960,-4.851],
+ [55.956,-4.868],
+ [55.950,-4.885],
+ [55.942,-4.902],
+ [55.936,-4.910],
+ [55.928,-4.919],
+ [55.920,-4.924],
+ [55.913,-4.928],
+ [55.908,-4.931],
+ [55.800,-4.967],
+ [55.680,-5.008],
+ [55.600,-5.010],
+ [55.500,-5.010],
+ [55.400,-5.012],
+ [55.300,-5.015],
+ [55.240,-5.020],
+ [55.170,-5.230],
+ [55.140,-5.460],
+ [55.200,-5.750],
+ [55.300,-6.050],
+ [55.380,-6.420],
+ [55.500,-7.650],
+ [55.10,-9.80],[52.50,-12.00],[50.00,-12.00],
+ [48.00,-10.50],[46.00,-9.50],[44.00,-9.80],[42.00,-10.00],
+ [39.50,-9.80],[37.50,-9.50],
+ [36.50,-9.00],
+ [35.978,-6.483],
+ [35.975,-6.129],
+ [35.961,-5.775],
+ [35.944,-5.492],
+ [35.961,-5.433],
+ [36.018,-5.398],
+ [36.086,-5.368],
+ OH[5].c];
+L.polyline(seaToGib,{color:'#7a2530',weight:2.2,opacity:.75,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// Felucca: Gibraltar → Cassis. Eight days. Alboran Sea, along the Spanish
+// coast, south of the Balearics, north across the Gulf of Lion.
+const felucca=[OH[5].c,
+ [36.453,-1.865],
+ [36.811,-1.409],
+ [37.213,-0.953],
+ [37.661,-0.496],
+ [38.153,-0.073],
+ [38.645,0.286],
+ [39.159,0.645],
+ [39.674,1.003],
+ [40.166,1.329],
+ [40.703,1.655],
+ [41.060,1.981],
+ [41.284,2.503],
+ [41.463,3.154],
+ [41.642,3.545],
+ [42.380,4.003],
+ [43.004,4.885],
+ OH[6].c];
+L.polyline(felucca,{color:'#7a2530',weight:2.2,opacity:.75,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// Ashore: Cassis → Cannes, the solo run out to Marseille and back, then up to St Jorioz
+L.polyline([OH[6].c,OH[7].c],{color:'#7a2530',weight:2.2,opacity:.75,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// Marseille: her first mission alone, a there-and-back from Cannes. Lighter thread.
+L.polyline([OH[7].c,OH[8].c],{color:'#7a2530',weight:1.6,opacity:.6,dashArray:'1 5',lineCap:'round'}).addTo(gOH);
+L.polyline([OH[7].c,OH[9].c],{color:'#7a2530',weight:2.2,opacity:.75,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// Captivity: a heavier chain-stitch dash, the thread pulled tight.
+// St Jorioz → Grenoble → Turin → Nice → Toulon → Fresnes → Avenue Foch
+// → Karlsruhe → Frankfurt → Halle → Ravensbrück
+const captive = [OH[9].c,OH[10].c,OH[11].c,OH[12].c,OH[13].c,OH[14].c,OH[15].c,OH[16].c,OH[17].c,OH[18].c,RAV.c];
+L.polyline(captive,{color:'#7a2530',weight:2.4,opacity:.9,dashArray:'8 5'}).addTo(gOH);
+// Suhren's drive: Ravensbrück west through the Brandenburg pines to Neustadt-Glewe.
+const suhrenDrive=[RAV.c,[53.22,12.80],[53.30,12.30],[53.37,11.90],OH[19].c];
+L.polyline(suhrenDrive,{color:'#7a2530',weight:1.6,opacity:.9,dashArray:'2 4'}).addTo(gOH);
+// Liberation marker at Neustadt-Glewe: amber, slightly larger
+L.marker(OH[19].c,{icon:dot('#b8752e',8),zIndexOffset:900})
+  .bindPopup(popup(OH[19],'oh'))
+  .bindTooltip(OH[19].n+nameTag('oh'),{direction:'top',offset:[0,-10],className:'place-label'}).addTo(gOH);
+// Homeward: Neustadt-Glewe → Croydon → Somerset → Walton-on-Thames
+const homeward=[OH[19].c,OH[20].c,OH[21].c,OH[23].c];
+L.polyline(homeward,{color:'#7a2530',weight:2.2,opacity:.6,dashArray:'1 6',lineCap:'round'}).addTo(gOH);
+// She goes back once, to testify: Somerset → Hamburg → home. December 1946.
+L.polyline([OH[21].c,OH[22].c],{color:'#7a2530',weight:1.6,opacity:.55,dashArray:'1 5',lineCap:'round'}).addTo(gOH);
+// ── Timeline panel ───────────────────────────────────────────────────────────
+// Fly to a place, then open its popup only once the map has settled. Opening
+// mid-flight makes the popup's own centring fight the flyTo animation, which is
+// what left entries sitting off to one side of the page.
+function flyOpen(latlng, open){
+  dismissIntro();
+  map.closePopup();
+  const done = ()=>{ map.off('moveend', done); open(); };
+  map.on('moveend', done);
+  map.flyTo(latlng, 8, {duration:1.1});
+  // flyTo fires no moveend if we are already there; nudge it along.
+  setTimeout(()=>{ if (map.getCenter().distanceTo(latlng) < 1 && map.getZoom() === 8) done(); }, 60);
+}
+function fill(listId,data,markers,type){
+  const ol=document.getElementById(listId);
+  data.forEach((p,i)=>{
+    const li=document.createElement('li');
+    li.tabIndex=0;
+    li.innerHTML=`<b>${p.n}${nameTag(type)}</b><span class="d">${p.d}</span>`;
+    const go=()=>flyOpen(p.c,()=>markers[i].openPopup());
+    li.addEventListener('click',go);
+    li.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+    ol.appendChild(li);
+  });
+}
+fill('listKM',KM,mkKM,'km');
+fill('listOH',OH,mkOH,'oh');
+// Ravensbrück entry appended to Odette's list, gold
+(function(){
+  const ol=document.getElementById('listOH');
+  const li=document.createElement('li');
+  li.className='gold';li.tabIndex=0;
+  li.innerHTML=`<b>${RAV.n}</b><span class="d">${RAV.d} · the two stories meet</span>`;
+  const go=()=>flyOpen(RAV.c,()=>mkRAV.openPopup());
+  li.addEventListener('click',go);
+  li.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+  // Ravensbrück sits between Halle and the liberation at Neustadt-Glewe.
+  // Locate it by name rather than a fixed index, so adding places never shifts it.
+  const nsIdx = OH.findIndex(p=>/Neustadt-Glewe/.test(p.n));
+  ol.insertBefore(li, ol.children[nsIdx>-1 ? nsIdx : ol.children.length-1]);
+})();
+// ── Toggles ──────────────────────────────────────────────────────────────────
+function wire(btnId,group,routeClass){
+  const b=document.getElementById(btnId);
+  b.addEventListener('click',()=>{
+    const on=map.hasLayer(group);
+    if(on){map.removeLayer(group);b.classList.add('off');b.setAttribute('aria-pressed','false');}
+    else{map.addLayer(group);b.classList.remove('off');b.setAttribute('aria-pressed','true');}
+    if(routeClass){
+      const heading=document.querySelector(`h2.route.${routeClass}`);
+      if(heading) heading.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  });
+}
+wire('tKM',gKM,'km');
+wire('tOH',gOH,'oh');
+</script>
+</body>
+</html>
